@@ -1,9 +1,9 @@
-# csci_780
+# u-reca
 
-placeholder repository for data visualization project
-
-anticipated technical stack:
-vueJS
-d3
+technical stack:
+javascript
+    vanilla
+    d3
+    light vueJS
 
 hello.
