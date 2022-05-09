@@ -197,7 +197,10 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
             .enter()
             .append("circle")
             .attr("class", "plantcircle")
-            .attr("data", (d) => {return d.name + "<br>" + groupMeta[d.type].key + " (" + d.mw + "MW)";})
+            .attr("data", (d) => {return d.name + "<br>" + 
+                                    groupMeta[d.type].key + " (" + d.mw + "MW)" + "<br>" + 
+                                    "Operated by: " + d.utility + "<br>" + 
+                                    "Zip Code: " +   Math.round(d.zip);})
             .attr("r", 0)
             .attr("r", (d) => { return scalingDots ? circleSizeF(d.mw, 7100, 0) : sourceRadius;})
             .style("stroke", 'black')
@@ -767,7 +770,7 @@ const updateSurveyAnchor = () => {
                 qn = document.getElementById(`q${q}RadioNo`).checked;
                 refreshedHref += `q${q}: ${ qy ? '1' : qn ? '0' : 'unselected'}%0D%0A`;
         })
-        
+
         refreshedHref += `%0D%0ATimestamped: ${ new Date() }`;
         surveyAnchor.href = refreshedHref;
     }
