@@ -554,7 +554,7 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
         var svgTable = d3.select("#summary")
         svgTable.selectAll('*').remove();
         if (!potential.checked) { 
-            makeTable(svgTable, data_filt, region, subset, table_details(energy_type) ) 
+            makeTable(svgTable, data_filt, region, subset) 
         }
 
     }
@@ -654,8 +654,8 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
                         });
 
         // sort energy types
-        //groups.sort((a,b) => { return a.key.localeCompare(b.key); }); // sort by label
-        groups.sort((a,b) => { return a.value > b.value ? -1 : 1; });
+        groups.sort((a,b) => { return a.key.localeCompare(b.key); }); // sort by label
+        //groups.sort((a,b) => { return a.value > b.value ? -1 : 1; });
         //console.log(group)
 
         // if no groups, don't paint the table
@@ -691,30 +691,31 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
             for(var i = 0; i < column_suffixes.length; i++) {
                     data_array[i] = [column_suffixes[i][0]];
                     for (var k = 0; k < column_prefixes.length ; k++ ){
-                        if (i == 0){ // don't multiply count by 1000
+                        data_array[i][k+1] = Math.round(source[0][column_prefixes[k]+column_suffixes[i][1]]*1000)
+                        /*if (i == 0){ // don't multiply count by 1000
                             data_array[i][k+1] = source[0][column_prefixes[k]+column_suffixes[i][1]]
                         } else { // put GW scale values back in MW, too manythings are 0 in GW
                             data_array[i][k+1] = Math.round(source[0][column_prefixes[k]+column_suffixes[i][1]]*1000)
-                        }
+                        }*/
                         
                     }
             }
     
-            tablebody. selectAll("tr").
+            tablebody. selectAll("tr")
             //data([[1],[2],[3],[4]]).
-            data(data_array).
-            enter().
-            append("tr").
-            selectAll("td").
-            data(function (row, i) {
-                return row;
-            }).
-            enter().
-            append("td").
-            attr("class", "small").
-            text(function (d) {
-                return d;
-            });
+                .data(data_array)
+                .enter()
+                .append("tr")
+                .selectAll("td")
+                .data(function (row, i) {
+                    return row;
+                })
+                .enter()
+                    .append("td")
+                    .attr("class", "small")
+                    .text(function (d) {
+                        return d;
+                });
     
             // put the table in the center
             /*
