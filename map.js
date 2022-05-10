@@ -200,7 +200,7 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
             .attr("data", (d) => {return d.name + "<br>" + 
                                     groupMeta[d.type].key + " (" + d.mw + "MW)" + "<br>" + 
                                     "Operated by: " + d.utility + "<br>" + 
-                                    "Zip Code: " +   Math.round(d.zip);})
+                                    "county: " +   d.county;})
             .attr("r", 0)
             .attr("r", (d) => { return scalingDots ? circleSizeF(d.mw, 7100, 0) : sourceRadius;})
             .style("stroke", 'black')
