@@ -649,7 +649,7 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
         if (region != "National"){
             // get list of utility providers, add all to front
             var utility_providers = source[0]['Utility_Name'].split("; ");
-            utility_providers.unshift("All");
+            utility_providers.unshift("None");
 
 
             let utility_dropdown = d3.select("#utility_dropdown")
@@ -758,7 +758,7 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
         detail_tbody.selectAll('*').remove();
         
         //console.log(column_prefixes)
-        if (selected_provider == 'All'){
+        if (selected_provider == 'None'){
             drawRegional(region);
         }
 
