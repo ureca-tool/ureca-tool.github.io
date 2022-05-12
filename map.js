@@ -200,7 +200,7 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
             .attr("data", (d) => {return d.name + "<br>" + 
                                     groupMeta[d.type].key + " (" + d.mw + "MW)" + "<br>" + 
                                     "Operated by: " + d.utility + "<br>" + 
-                                    "county: " +   d.county;})
+                                    "County: " +   d.county;})
             .attr("r", 0)
             .attr("r", (d) => { return scalingDots ? circleSizeF(d.mw, 7100, 0) : sourceRadius;})
             .style("stroke", 'black')
@@ -347,7 +347,6 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
         if (potential.checked){
             energy_group = "Potential";
             data_file = "resources/data/usretechnicalpotential_column_aggs.csv";
-            remove_table();
         } else {
             energy_group = "Actual";
             data_file = "resources/data/Power_Plants_state_and_natl_agg.csv";
@@ -550,7 +549,10 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
         // Legend
         drawLegend(svg, data_filt, region, subset, width, (_event, d) => { energy_type = d.key; console.log(d.key); removeBar(); drawBar(region, d.key); updateNationalDots(); });
 
-        // Table (if in Actual Mode)
+        // Remove old table and make new (if in Actual Mode)
+        var svgUtilityDropdown = d3.select("#utility_dropdown");
+        svgUtilityDropdown.selectAll('*').remove();
+        svgUtilityDropdown.text("");
         var svgTable = d3.select("#summary")
         svgTable.selectAll('*').remove();
         if (!potential.checked) { 
@@ -643,6 +645,29 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
     let makeTable = (hook, source, region, subset) => {
         hook = hook.append('div')
 
+        // add a dropdown to select utility provider if not in national mode
+        if (region != "National"){
+            // get list of utility providers, add all to front
+            var utility_providers = source[0]['Utility_Name'].split("; ");
+            utility_providers.unshift("All");
+
+
+            let utility_dropdown = d3.select("#utility_dropdown")
+                    .text('Select Utility Provider: ')
+                    .insert("select", "svg")
+                    .on("change", function() {var selected =  this.options[this.selectedIndex].value;
+                                            utility_dropdown_change(selected, region, subset)});
+            utility_dropdown.selectAll("option")
+                    .data(utility_providers) // gets all utility names as an array
+                    .enter()
+                        .append("option")
+                        .attr("value", function (d) { return d; })
+                        .text(function (d) {
+                            return d;
+                        });
+            
+        };
+
         // scope the source and add meta
         let groups = Object.keys(subset)
                            .filter(f => f.endsWith("_GW"))
@@ -656,7 +681,7 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
         // sort energy types
         groups.sort((a,b) => { return a.key.localeCompare(b.key); }); // sort by label
         //groups.sort((a,b) => { return a.value > b.value ? -1 : 1; });
-        //console.log(group)
+        //console.log(groups)
 
         // if no groups, don't paint the table
         if (groups.length > 0) {
@@ -676,13 +701,17 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
                 .data(header_groups)
                 .enter()
                     .append("th")
-                        .text((_x,i) => header_groups[i].key)
+                        
                         .style('background-color', x => x.color)
-                        .style('width', `${ width }em`);
-                        //.on("click", onclick);
+                        .style('width', `${ width }em`)
+                        .text((_x,i) => header_groups[i].key);
+                        /*.on("click", (_x,j) => {
+                            table_details(region, j.key, true)
+                        });*/
+                        
     
     
-            var tablebody = table.append("tbody");
+            var main_tablebody = table.append("tbody");
             
             var column_prefixes = Object.keys(subset).filter(f => ! f.startsWith("un")).sort();
             var column_suffixes = [['Number of Plants', '_count'], ['Minimum Size (MW)', '_min'], 
@@ -700,39 +729,131 @@ document.addEventListener("DOMContentLoaded", function(_event) { /* begin "DOMCo
                         
                     }
             }
+            
     
-            tablebody. selectAll("tr")
+            main_tablebody. selectAll("tr")
             //data([[1],[2],[3],[4]]).
                 .data(data_array)
                 .enter()
-                .append("tr")
-                .selectAll("td")
-                .data(function (row, i) {
-                    return row;
-                })
-                .enter()
-                    .append("td")
-                    .attr("class", "small")
-                    .text(function (d) {
-                        return d;
+                    .append("tr")
+                    .selectAll("td")
+                    .data(function (row, i) {
+                        return row;
+                    })
+                    .enter()
+                        .append("td")
+                        .attr("class", "small")
+                        .text(function (d) {
+                            return d;
                 });
-    
-            // put the table in the center
-            /*
-            let hook_width = document.querySelector('div').offsetWidth
-            var table_width = document.querySelector('table').offsetWidth
-            var pad = (hook_width-table_width)/2
-            console.log(hook_width, table_width, pad)
-            table.style('padding-left', `${pad}px`)
-            //*/
+
         }
     }
 
-    var table_details = function(hook, energy_type){
-        // show a more detailed table
+
+    var utility_dropdown_change = async function(selected_provider, region, subset) {
+
+        // If you don't use selectAll here, they can start to accunmulate after a couple clicks
+        var detail_tbody = d3.selectAll('#detail_tbody');
+        detail_tbody.selectAll('*').remove();
+        
+        //console.log(column_prefixes)
+        if (selected_provider == 'All'){
+            drawRegional(region);
+        }
+
+        // get the data and make sure it all loads
+        // originally tried implementing with a for loop to read the csv, but it's too slow
+        let data = []
+        await d3.csv("resources/data/Power_Plants_utility_agg.csv", d3.autoType).then(d => data = d);
+        
+        // filter the data to select rows with the desired state and utility company
+        var data_filt = data.filter(function(dd){return (dd.StateName == region)});
+        data_filt = data_filt.filter(function(dd){return (dd.Utility_Name == selected_provider)});
+        
+        // format the data to make it easy to add to the existing table structure
+        var column_prefixes = Object.keys(subset).filter(f => ! f.startsWith("un")).sort();
+        for (var i = 0; i < column_prefixes.length; i++) {
+            column_prefixes[i] = groupMeta[column_prefixes[i]].key
+        }
+        var column_suffixes = [['Number of Plants', '_count'], ['Total MW', '_sum']]
+
+        data_as_array = []
+        for(var i = 0; i < column_suffixes.length; i++) {
+            data_as_array[i] = [column_suffixes[i][0]];
+            for (var k = 0; k < column_prefixes.length ; k++ ){
+                if (isNaN(data_filt[0][column_prefixes[k]+column_suffixes[i][1]])) {
+                    data_as_array[i][k+1] = 0
+                } else {
+                    data_as_array[i][k+1] = Math.round(Number(data_filt[0][column_prefixes[k]+column_suffixes[i][1]]))
+                }
+            }
+        }
+                            
+        var table = d3.select("#summary").select('table')
+        
+        // append a second table body element to the existing table
+        var detail_tablebody = table.append("tbody");
+        detail_tablebody.attr("id", "detail_tbody");
+
+        var explain = detail_tablebody.append('td')
+                                        .attr('colSpan', '10')
+                                        .text('Detailed Metrics for '+ selected_provider)
+
+        detail_tablebody.selectAll('tr')
+            .data(data_as_array)
+            //.data([[1,2,3,4,5,6,7,8,9,10],[1,2,3,4,5,6,7,8,9,10]])
+                .enter()
+                    .append("tr")
+                    .style('width', `${ width }em`)
+                    .selectAll("td")
+                    .data(function (row, i) {
+                        //console.log(row)
+                        return row;
+                    })
+                    .enter()
+                        .append("td")
+                        .attr("class", "small")
+                        .text(function (d) {
+                            return d;
+                });
+
     }
+    /* not implementing because pie charts are bad
+    var table_details = function(region, energy_type, by_utility_provider){
+        if (region != 'National') {
+            if (by_utility_provider == true) {
+                var field = 'Utility_Name'
+            } else {
+                var field = 'County'
+            }
+
+            var pie_chart_data = {}
+            d3.csv("resources/data/Power_Plants_utility_agg.csv", function(data) {
+                if (data.StateName == region) {
+                    if (data.PrimSource == energy_type){
+                        //console.log(data[field] + " " + data.sum)
+                        if (data[field] in pie_chart_data) {
+                            pie_chart_data[data[field]] = pie_chart_data[data[field]] + Number(data.sum)
+                        } else {
+                            pie_chart_data[data[field]] = Number(data.sum)
+                        }
+                    }   
+                }
+            });
+            console.log(pie_chart_data)
+
+
+        };
+        
+    }
+    */
 
     var remove_table = function(hook){
+        // remove the old dropdown
+        var svgUtilityDropdown = d3.select("#utility_dropdown")
+        svgUtilityDropdown.selectAll('*').remove();
+        // remove the old table
         var table_div = d3.select(hook).select('#div')
         table_div.selectAll('*').remove();
     }
